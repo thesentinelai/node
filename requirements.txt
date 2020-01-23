@@ -1,0 +1,8 @@
+matplotlib
+numpy
+tensorflow
+pylint
+flask
+scipy
+scikit-image
+ipfshttpclient
