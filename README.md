@@ -18,3 +18,8 @@ ipfs daemon
 ```
 pylint --rcfile=pylintrc ../mnist_utility/
 ```
+
+## 5. Update Submodules
+```
+git submodule update --recursive
+```
