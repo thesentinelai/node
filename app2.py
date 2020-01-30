@@ -7,6 +7,8 @@ from time import sleep
 import ipfshttpclient
 from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
+import requests
+from socket import gethostname, gethostbyname
 
 app = Flask(__name__)
 CORS(app)
@@ -15,12 +17,20 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
 active_tasks = []
 global SERVER_STATUS
-Sentinel  = ""
+Sentinel = ""
 
 def addToIPFS(_fn = "model.h5"):
   res = client.add(_fn)
   client.pin_ls(type='all')
   return res['Hash']
+
+def add_self_to_exchange():
+  exchange_url = '/'
+  endpoint = "/node-handler"
+  hostname = gethostname()
+  IPAddr = gethostbyname(hostname)
+  resp = requests.post(f"{exchange_url}{endpoint}/{IPAddr}")
+
 
 @app.route('/')
 def server():
@@ -28,6 +38,7 @@ def server():
   """ Online Test """
 
   return "<p style='font-family: monospace;padding: 10px;'>Server is online 🚀</p>"
+
 
 @app.route('/status')
 def status():
@@ -55,6 +66,7 @@ def get_hash(task_id):
   else:
     return jsonify(str(proc.stderr)), 400
 
+
 @app.route('/start-training/', defaults={'task_id': 0})
 @app.route('/start-training/<int:task_id>')
 def start_training(task_id):
@@ -65,10 +77,11 @@ def start_training(task_id):
   else:
     active_tasks.push(task_id)
 
+
 def background_trainer():
   for ind in range(len(active_tasks)):
     SERVER_STATUS = "TRAINING"
-
+    print(f"TRAINING MODEL FOR TASK {active_tasks[ind]}")
     model_hashes = list(Sentinel.functions.getTaskHashes(active_tasks[ind]).call())
     print(model_hashes)
     if (len(model_hashes) > 1):
@@ -82,11 +95,14 @@ def background_trainer():
     active_tasks.pop(ind)
     SERVER_STATUS = "IDLE"
 
+
 if __name__ == '__main__':
   w3 = Web3(HTTPProvider('https://testnet2.matic.network'))
   if not w3.isConnected():
     print("Web3 Not Connected")
     exit(0)
+
+  # add_self_to_exchange();
 
   Sentinel = w3.eth.contract(address=contractAddress,abi=contractABI)
 
