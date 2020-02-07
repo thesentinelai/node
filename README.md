@@ -1,4 +1,4 @@
-# mnist-utility
+# node
 
 ## 1. Installation
 1. [IPFS](https://docs.ipfs.io/guides/guides/install/)
@@ -17,9 +17,4 @@ ipfs daemon
 ## 4. Code Linting
 ```
 pylint --rcfile=pylintrc ../mnist_utility/
-```
-
-## 5. Update Submodules
-```
-git submodule update --recursive
 ```
