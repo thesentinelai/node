@@ -1,16 +1,15 @@
-from flask import Flask, render_template, request, jsonify
+""" Local Node Server """
+from os import getenv, path, makedirs
+from random import randrange
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from contract import contractABI, contractAddress
-from web3 import Web3,HTTPProvider
-from time import sleep
-from dotenv import load_dotenv
-from time import sleep
-from apscheduler.schedulers.background import BackgroundScheduler
-from os import getenv
-from urllib.parse import quote
-import subprocess
-import ipfshttpclient
 import requests
+import ipfshttpclient
+from web3 import Web3, HTTPProvider
+from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+import tensorflow as tf
+from contract import contractABI, contractAddress
 
 load_dotenv()
 
@@ -24,23 +23,33 @@ client = ipfshttpclient.connect(ipfs_api)
 print(f"Connected to IPFS v{client.version()['Version']}")
 
 active_tasks = []
-global SERVER_STATUS
 Sentinel = ""
 
 
-def addToIPFS(_fn = "model.h5"):
+def addToIPFS(_fn="model.h5"):
+
+  """ Add File to IPFS """
+
   res = client.add(_fn)
-  client.pin_ls(type='all')
   return res['Hash']
 
 
 def add_self_to_exchange():
-  PARAMS = {
+
+  """ Add Server to Exchange """
+
+  params = {
     'eth_address': getenv('ETHADDRESS'),
     'ip': getenv('NODE1_URL')
   }
-  resp = requests.post(f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}", json= PARAMS)
-  if (resp.status_code != 200):
+  posturl = f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}"
+  try:
+    resp = requests.post(posturl, json=params)
+  except:
+    print("Coordinator Node is Offline")
+    exit(0)
+
+  if resp.status_code != 200:
     print("Coordinator Node is Offline")
     exit(0)
   else:
@@ -52,7 +61,11 @@ def server():
 
   """ Online Test """
 
-  return "<p style='font-family: monospace;padding: 10px;'>Local Training Node is online 🚀</p>"
+  html = """<p style='font-family: monospace;padding: 10px;'>
+            Local Training Node is online 🚀
+            </p>"""
+
+  return html
 
 
 @app.route('/status')
@@ -61,15 +74,14 @@ def status():
   """ Returns server status """
 
   server_data = {
-  "status" : SERVER_STATUS,
-    "active_tasks" : active_tasks
+    "active_tasks": active_tasks
   }
 
   return jsonify(server_data), 200
 
 
-@app.route('/start-training/', defaults={'task_id': 0}, methods = ['GET', 'POST'])
-@app.route('/start-training/<int:task_id>', methods = ['GET', 'POST'])
+@app.route('/start-training/', defaults={'task_id': 0}, methods=['GET', 'POST'])
+@app.route('/start-training/<int:task_id>', methods=['GET', 'POST'])
 def start_training(task_id):
 
   """ Training Start """
@@ -85,35 +97,62 @@ def background_trainer():
 
   """ Background Transaction Handler """
 
-  for ind in range(len(active_tasks)):
-    SERVER_STATUS = "TRAINING"
-    print(f"TRAINING MODEL FOR TASK {active_tasks[ind]}")
-    model_hashes = list(Sentinel.functions.getTaskHashes(active_tasks[ind]).call())
-    print(model_hashes)
-    if (len(model_hashes) > 1):
-      try:
-        new_model = tf.keras.models.load_model(model_hashes[-2])
-      except:
-        print("INVALID MODEL FOR TASK "+ str(active_tasks[ind]))
-    else:
-      print("INVALID MODEL HASH FOR TASK "+ str(active_tasks[ind]))
+  for ind, val in enumerate(active_tasks):
+
+    print(f"TRAINING MODEL FOR TASK {val}")
+    model_hashes = Sentinel.functions.getTaskHashes(val).call()
+    model_hashes = [x for x in list(model_hashes) if x.strip()]
+
+    try:
+      if (len(model_hashes) >= 1):
+
+        print(f"Fetching {model_hashes[-1]} from IPFS")
+        client.get(model_hashes[-1])
+        new_model = tf.keras.models.load_model(model_hashes[-1])
+        print(new_model.summary())
+        new_model.fit(xtrain, ytrain, epochs=1, verbose=0)
+        fn = f"model_storage/{randrange(1000, 99999)}.h5"
+        new_model.save(fn)
+        new_hash = addToIPFS(fn)
+        print(f"TASKID:{val} Trained {new_hash}")
+
+      else:
+        print("Invalid Task")
+
+    except:
+      print("Error in Training Model")
 
     active_tasks.pop(ind)
-    SERVER_STATUS = "IDLE"
 
 
 if __name__ == '__main__':
+
   w3 = Web3(HTTPProvider('https://testnet2.matic.network'))
   if not w3.isConnected():
     print("Web3 Not Connected")
     exit(0)
+  else:
+    print(f'Connected to Web3 v{w3.api}')
 
   add_self_to_exchange()
 
-  Sentinel = w3.eth.contract(address=contractAddress,abi=contractABI)
+  Sentinel = w3.eth.contract(address=contractAddress, abi=contractABI)
 
   sched = BackgroundScheduler(daemon=True)
   sched.add_job(background_trainer, "interval", seconds=10)
   sched.start()
 
-  app.run(host="127.0.0.1", port="5005", debug=True, use_reloader=False, threaded=True)
+  if not path.exists('model_storage'): makedirs('model_storage')
+
+  mnist = tf.keras.datasets.mnist
+  (xtrain, ytrain), (xtest, ytest) = mnist.load_data()
+  xtrain = tf.keras.utils.normalize(xtrain, axis=1)
+  xtest = tf.keras.utils.normalize(xtest, axis=1)
+  print("Data Loaded")
+
+  app.run(
+      host="127.0.0.1",
+      port="5005",
+      debug=True,
+      use_reloader=False,
+      threaded=True)

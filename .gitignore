@@ -1,2 +1,5 @@
 /__pycache__
 .env
+model2.h5
+/storage_sir
+/model_storage
