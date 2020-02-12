@@ -1,116 +1,184 @@
-""" Master Server """
-import re
-import base64
-# from datetime import datetime
-from io import BytesIO
-import numpy as np
-import tensorflow as tf
+""" Local Node Server """
+from os import getenv, path, makedirs
+import sys
+import shutil
+import logging
+from random import randrange
+from flask import Flask, jsonify
+from flask_cors import CORS
+import requests
 import ipfshttpclient
-from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, jsonify
-from scipy.misc import imread
-from skimage.transform import resize
+from web3 import Web3, HTTPProvider
+from apscheduler.schedulers.background import BackgroundScheduler
+from dotenv import load_dotenv
+import tensorflow as tf
+from contract import contractABI, contractAddress
 
-# import matplotlib.pyplot as plt
-print("Finished Imports")
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = b'_5#y2L"F4Q8z\n\xec]iasdfffsd/'
+CORS(app)
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]iasdfjfsd/'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-# from flask_ngrok import run_with_ngrok
-# run_with_ngrok(app)
+#ipfs_api = '/ip4/127.0.0.1/tcp/5001/http'
+ipfs_api = '/dns/ipfs.infura.io/tcp/5001/https'
+client = ipfshttpclient.connect(ipfs_api)
+print(f"Connected to IPFS v{client.version()['Version']}")
 
-UPLOAD_DIR = "./upload_dir/"
-current_model = ["model.h5"]
+active_tasks = []
+global sentinel_contract
+
+port = int(getenv('PORT', str(5005)))
+
+def add_to_ipfs(fn="model.h5"):
+
+  """ Add File to IPFS """
+
+  res = client.add(fn)
+  return res['Hash']
+
+
+def add_self_to_exchange():
+
+  """ Add Server to Exchange """
+
+  ip = getenv('NODE1_URL')+":"+str(port)
+  params = {'eth_address': getenv('ETHADDRESS'), 'ip': ip}
+  posturl = f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}"
+  try:
+    resp = requests.post(posturl, json=params)
+  except:
+    print("Coordinator Node is Offline")
+    sys.exit(0)
+
+  if resp.status_code != 200:
+    print("Coordinator Node is Offline")
+    sys.exit(0)
+  else:
+    print("Connected to Coordinator Node")
+
 
 @app.route('/')
-def hello():
+def server():
 
-  """ Welcome Page """
+  """ Online Test """
 
-  return render_template("index.html")
+  html = """<p style='font-family: monospace;padding: 10px;'>
+            Local Training Node is online 🚀 </p>"""
 
-@app.route('/predict/', methods=['GET', 'POST'])
-def predict():
+  return html
 
-  """ Primary Prediction Endpoint """
 
-  img_data = request.get_data()
-  imgstr = re.search(b'base64,(.*)', img_data).group(1)
-  image_bytes = base64.decodebytes(imgstr)
-  image_stream = BytesIO(image_bytes)
-  x = imread(image_stream, mode='L')
-  x = np.invert(x)
-  x = resize(x, (28, 28))
-  img = np.reshape(x, (1, 28, 28))
-  predictions = loaded_model.predict_classes(img)
-  print(predictions)
-  # plt.imshow(img.reshape((28, 28)))
-  # plt.show()
+@app.route('/status')
+def status():
 
-  return str(predictions)
+  """ Returns server status """
 
-@app.route('/model/address', methods=['GET', 'POST'])
-def model_address():
+  server_data = {
+      "active_tasks": active_tasks
+  }
 
-  """ Get Distributed Model Hash """
+  return jsonify(server_data), 200
 
-  res = client.add('model.h5', 'model.json')
-  print(res)
 
-  return jsonify(res)
+@app.route('/start-training/', defaults={'task_id': 0}, methods=['GET', 'POST'])
+@app.route('/start-training/<int:task_id>', methods=['GET', 'POST'])
+def start_training(task_id):
 
-@app.route('/model/', methods=['GET'])
-def upload():
+  """ Training Start """
 
-  """ Upload Page """
+  if task_id < 1:
+    return jsonify("Invalid Task"), 400
+  else:
+    active_tasks.append(task_id)
+    return jsonify("Task Added"), 200
 
-  return render_template("file_upload_form.html")
 
-@app.route('/model/upload/', methods=['POST'])
-def success():
+def background_trainer():
 
-  """ Upload Handler """
+  """ Background Transaction Handler """
 
-  f = request.files['file']
-  # now = str(datetime.now())
-  now = ""
-  fn = str(f.filename).split(".")[0]
-  fext = str(f.filename).split(".")[1]
-  finalfn = secure_filename(f"{fn}{now}.{fext}")
-  f.save(f"{UPLOAD_DIR}{finalfn}")
-  current_model.append(str(UPLOAD_DIR+finalfn))
+  for ind, val in enumerate(active_tasks):
 
-  return render_template("success.html", name=finalfn)
+    print(f"TRAINING MODEL FOR TASK {val}")
+    model_hashes = sentinel_contract.functions.getTaskHashes(val).call()
+    model_hashes = [x for x in list(model_hashes) if x.strip()]
+    task_data = sentinel_contract.functions.SentinelTasks(val).call() # taskID, currentRound, totalRounds, cost
 
-@app.route('/model/status/', methods=['GET'])
-def model_status():
+    if len(model_hashes) >= task_data[2]:
+      print(f"TASKID:{val} is completed.")
+    else:
+      try:
+        if len(model_hashes) >= 1:
+          active_hash = model_hashes[-1]
+          print(f"Fetching {active_hash} from IPFS")
+          if not path.exists(f'model_storage/{active_hash}'):
+            client.get(active_hash)
+            shutil.move(active_hash, 'model_storage')
+          new_model = tf.keras.models.load_model(f"model_storage/{active_hash}")
+          print(new_model.summary())
+          new_model.fit(xtrain, ytrain, epochs=1, verbose=0)
+          fn = f"model_storage/{randrange(1000, 99999)}.h5"
+          new_model.save(fn)
+          new_hash = add_to_ipfs(fn)
+          shutil.move(fn, f'model_storage/{new_hash}')
+          print(f"TASKID:{val} Trained {new_hash}")
 
-  """ Model Status """
+          params = {
+              'ethAddress': getenv('ETHADDRESS'),
+              'modelHash': new_hash
+          }
+          url = f"{getenv('COORDINATOR_URL')}{getenv('NEXTRUN_ENDPOINT')}/{val}"
+          try:
+            requests.post(url, json=params)
+          except:
+            print(f"Coordinator Node is Offline while POSTING RESULT")
+            print(params)
 
-  return render_template("status.html", model_name=current_model[-1])
+        else:
+          print("Invalid Task")
 
+      except:
+        print("Error in Training Model")
+
+    active_tasks.pop(ind)
+
+
+w3 = Web3(HTTPProvider('https://testnet2.matic.network'))
+if not w3.isConnected():
+  print("Web3 Not Connected")
+  sys.exit(0)
+else:
+  print(f'Connected to Web3 v{w3.api}')
+
+add_self_to_exchange()
+
+sentinel_contract = w3.eth.contract(address=contractAddress, abi=contractABI)
+
+sched = BackgroundScheduler(daemon=True)
+sched.add_job(background_trainer, "interval", seconds=10)
+sched.start()
+
+if not path.exists('model_storage'): makedirs('model_storage')
+
+mnist = tf.keras.datasets.mnist
+(xtrain, ytrain), (xtest, ytest) = mnist.load_data()
+xtrain = tf.keras.utils.normalize(xtrain, axis=1)
+xtest = tf.keras.utils.normalize(xtest, axis=1)
+print("Data Loaded")
+
+if __name__ != "__main__":
+
+  gunicorn_logger = logging.getLogger('gunicorn.error')
+  app.logger.handlers = gunicorn_logger.handlers
+  app.logger.setLevel(gunicorn_logger.level)
 
 if __name__ == '__main__':
 
-  print("Loading Model")
-  json_file = open('model.json', 'r')
-  loaded_model_json = json_file.read()
-  json_file.close()
-  loaded_model = tf.keras.models.model_from_json(loaded_model_json)
-  loaded_model.load_weights("model.h5")
-
-  print("Model Loaded")
-  loaded_model.compile(optimizer='adam',
-                       loss='sparse_categorical_crossentropy',
-                       metrics=['accuracy'])
-
-  print("Model Compiled")
-
-  print("Connecting to private swarm")
-  ipfs_api = '/ip4/127.0.0.1/tcp/5001/http'
-  client = ipfshttpclient.connect(addr=ipfs_api)
-  print("Connected")
-
-  app.run()
+  app.run(
+      host="127.0.0.1",
+      port=int(getenv('PORT', str(5005))),
+      debug=False,
+      use_reloader=False,
+      threaded=True)

@@ -21,9 +21,6 @@ model.compile(optimizer='adam',
 
 model.fit(xtrain, ytrain, epochs=15)
 
-model_json = model.to_json()
-with open("model.json", "w") as json_file:
-  json_file.write(model_json)
-model.save("model2.h5")
+model.save("model.h5")
 
 print("Saved model to disk")
