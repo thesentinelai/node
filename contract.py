@@ -4,15 +4,119 @@ contractABI= [
 		"constant": False,
 		"inputs": [
 			{
+				"internalType": "string",
 				"name": "_modelHash",
 				"type": "string"
 			},
 			{
+				"internalType": "uint256",
 				"name": "_rounds",
 				"type": "uint256"
 			}
 		],
 		"name": "createTask",
+		"outputs": [],
+		"payable": True,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": False,
+				"internalType": "string",
+				"name": "_fileHash",
+				"type": "string"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "_time",
+				"type": "uint256"
+			}
+		],
+		"name": "fileAdded",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "uint256",
+				"name": "taskID",
+				"type": "uint256"
+			},
+			{
+				"indexed": False,
+				"internalType": "string",
+				"name": "_modelHash",
+				"type": "string"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "_time",
+				"type": "uint256"
+			}
+		],
+		"name": "modelUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": False,
+		"inputs": [
+			{
+				"indexed": True,
+				"internalType": "uint256",
+				"name": "taskID",
+				"type": "uint256"
+			},
+			{
+				"indexed": True,
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			},
+			{
+				"indexed": False,
+				"internalType": "string",
+				"name": "_modelHash",
+				"type": "string"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "_amt",
+				"type": "uint256"
+			},
+			{
+				"indexed": False,
+				"internalType": "uint256",
+				"name": "_time",
+				"type": "uint256"
+			}
+		],
+		"name": "newTaskCreated",
+		"type": "event"
+	},
+	{
+		"constant": False,
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_fileHash",
+				"type": "string"
+			}
+		],
+		"name": "storeFile",
 		"outputs": [],
 		"payable": False,
 		"stateMutability": "nonpayable",
@@ -22,73 +126,41 @@ contractABI= [
 		"constant": False,
 		"inputs": [
 			{
+				"internalType": "uint256",
 				"name": "_taskID",
 				"type": "uint256"
 			},
 			{
+				"internalType": "string",
 				"name": "_modelHash",
 				"type": "string"
+			},
+			{
+				"internalType": "address payable",
+				"name": "computer",
+				"type": "address"
 			}
 		],
 		"name": "updateModelForTask",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
+		"outputs": [],
 		"payable": False,
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
-		"anonymous": False,
-		"inputs": [
+		"constant": True,
+		"inputs": [],
+		"name": "getFiles",
+		"outputs": [
 			{
-				"indexed": True,
-				"name": "taskID",
-				"type": "uint256"
-			},
-			{
-				"indexed": True,
-				"name": "_user",
-				"type": "address"
-			},
-			{
-				"indexed": False,
-				"name": "_amt",
-				"type": "uint256"
-			},
-			{
-				"indexed": False,
-				"name": "_time",
-				"type": "uint256"
+				"internalType": "string[]",
+				"name": "",
+				"type": "string[]"
 			}
 		],
-		"name": "newTaskCreated",
-		"type": "event"
-	},
-	{
-		"anonymous": False,
-		"inputs": [
-			{
-				"indexed": True,
-				"name": "taskID",
-				"type": "uint256"
-			},
-			{
-				"indexed": False,
-				"name": "_modelHash",
-				"type": "string"
-			},
-			{
-				"indexed": False,
-				"name": "_time",
-				"type": "uint256"
-			}
-		],
-		"name": "modelUpdated",
-		"type": "event"
+		"payable": False,
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
 		"constant": True,
@@ -96,6 +168,7 @@ contractABI= [
 		"name": "getTaskCount",
 		"outputs": [
 			{
+				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
 			}
@@ -108,6 +181,7 @@ contractABI= [
 		"constant": True,
 		"inputs": [
 			{
+				"internalType": "uint256",
 				"name": "_taskID",
 				"type": "uint256"
 			}
@@ -115,6 +189,7 @@ contractABI= [
 		"name": "getTaskHashes",
 		"outputs": [
 			{
+				"internalType": "string[]",
 				"name": "",
 				"type": "string[]"
 			}
@@ -129,6 +204,7 @@ contractABI= [
 		"name": "getTasksOfUser",
 		"outputs": [
 			{
+				"internalType": "uint256[]",
 				"name": "",
 				"type": "uint256[]"
 			}
@@ -141,6 +217,7 @@ contractABI= [
 		"constant": True,
 		"inputs": [
 			{
+				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
 			}
@@ -148,18 +225,22 @@ contractABI= [
 		"name": "SentinelTasks",
 		"outputs": [
 			{
+				"internalType": "uint256",
 				"name": "taskID",
 				"type": "uint256"
 			},
 			{
+				"internalType": "uint256",
 				"name": "currentRound",
 				"type": "uint256"
 			},
 			{
+				"internalType": "uint256",
 				"name": "totalRounds",
 				"type": "uint256"
 			},
 			{
+				"internalType": "uint256",
 				"name": "cost",
 				"type": "uint256"
 			}
@@ -172,10 +253,38 @@ contractABI= [
 		"constant": True,
 		"inputs": [
 			{
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			},
 			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "UserFiles",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"payable": False,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": True,
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
 			}
@@ -183,6 +292,7 @@ contractABI= [
 		"name": "UserTaskIDs",
 		"outputs": [
 			{
+				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
 			}
@@ -192,4 +302,4 @@ contractABI= [
 		"type": "function"
 	}
 ];
-contractAddress = "0xdFF74cBcD63811C050A6a2545E62bF7960C55671";
+contractAddress = "0x2317d8504FdC96De4Ee82DfEd023B54cBBed1AE3";

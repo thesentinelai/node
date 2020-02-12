@@ -1,5 +1,6 @@
 """ Local Node Server """
-from os import getenv, path, makedirs
+from os import getenv, path, makedirs, rename
+import shutil
 from random import randrange
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -105,16 +106,30 @@ def background_trainer():
 
     try:
       if (len(model_hashes) >= 1):
-
-        print(f"Fetching {model_hashes[-1]} from IPFS")
-        client.get(model_hashes[-1])
-        new_model = tf.keras.models.load_model(model_hashes[-1])
+        active_hash = model_hashes[-1]
+        print(f"Fetching {active_hash} from IPFS")
+        if not path.exists(f'model_storage/{active_hash}'):
+          client.get(active_hash)
+          shutil.move(active_hash,'model_storage')
+        new_model = tf.keras.models.load_model(f"model_storage/{active_hash}")
         print(new_model.summary())
         new_model.fit(xtrain, ytrain, epochs=1, verbose=0)
         fn = f"model_storage/{randrange(1000, 99999)}.h5"
         new_model.save(fn)
         new_hash = addToIPFS(fn)
+        shutil.move(fn,f'model_storage/{new_hash}')
         print(f"TASKID:{val} Trained {new_hash}")
+
+        params = {
+          'ethAddress': getenv('ETHADDRESS'),
+          'modelHash': new_hash
+        }
+        posturl = f"{getenv('COORDINATOR_URL')}{getenv('NEXTRUN_ENDPOINT')}/{val}"
+        try:
+          resp = requests.post(posturl, json=params)
+        except:
+          print(f"Coordinator Node is Offline while POSTING RESULT")
+          print(params)
 
       else:
         print("Invalid Task")
@@ -153,6 +168,6 @@ if __name__ == '__main__':
   app.run(
       host="127.0.0.1",
       port="5005",
-      debug=True,
+      debug=False,
       use_reloader=False,
       threaded=True)
