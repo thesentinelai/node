@@ -5,6 +5,7 @@
 2. Gunicorn ```apt install gunicorn3```
 
 ## 2. Running the code
+
 ### 2.1 http
 ```
 sudo gunicorn3 app:app --workers 3 --threads=2 --bind 0.0.0.0:80 --log-file app.log --access-logfile access.log --log-level DEBUG
