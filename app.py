@@ -43,8 +43,7 @@ def add_self_to_exchange():
 
   """ Add Server to Exchange """
 
-  ip = getenv('NODE1_URL')+":"+str(port)
-  params = {'eth_address': getenv('ETHADDRESS'), 'ip': ip}
+  params = {'eth_address': getenv('ETHADDRESS'), 'ip': getenv('NODE1_URL')}
   posturl = f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}"
   try:
     resp = requests.post(posturl, json=params)
