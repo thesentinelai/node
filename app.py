@@ -117,6 +117,7 @@ def background_trainer():
             shutil.move(active_hash, 'model_storage')
           new_model = tf.keras.models.load_model(f"model_storage/{active_hash}")
           print(new_model.summary())
+          print("Now Training Model")
           new_model.fit(xtrain, ytrain, epochs=1, verbose=0)
           fn = f"model_storage/{randrange(1000, 99999)}.h5"
           new_model.save(fn)
@@ -144,7 +145,7 @@ def background_trainer():
     active_tasks.pop(ind)
 
 
-w3 = Web3(HTTPProvider('https://testnet2.matic.network'))
+w3 = Web3(HTTPProvider('https://betav2.matic.network'))
 if not w3.isConnected():
   print("Web3 Not Connected")
   sys.exit(0)
@@ -176,7 +177,7 @@ if __name__ != "__main__":
 if __name__ == '__main__':
 
   app.run(
-      host="127.0.0.1",
+      host="0.0.0.0",
       port=int(getenv('PORT', str(5005))),
       debug=False,
       use_reloader=False,
