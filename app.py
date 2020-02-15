@@ -21,7 +21,6 @@ CORS(app)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]iasdfjfsd/'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-#ipfs_api = '/ip4/127.0.0.1/tcp/5001/http'
 ipfs_api = '/dns/ipfs.infura.io/tcp/5001/https'
 client = ipfshttpclient.connect(ipfs_api)
 print(f"Connected to IPFS v{client.version()['Version']}")
@@ -144,6 +143,7 @@ def background_trainer():
 
     active_tasks.pop(ind)
 
+# Start Initialization
 
 w3 = Web3(HTTPProvider('https://betav2.matic.network'))
 if not w3.isConnected():
@@ -168,6 +168,8 @@ xtrain = tf.keras.utils.normalize(xtrain, axis=1)
 xtest = tf.keras.utils.normalize(xtest, axis=1)
 print("Data Loaded")
 
+# End Initialization
+
 if __name__ != "__main__":
 
   gunicorn_logger = logging.getLogger('gunicorn.error')
@@ -182,3 +184,5 @@ if __name__ == '__main__':
       debug=False,
       use_reloader=False,
       threaded=True)
+      #ssl_context=('/etc/letsencrypt/live/sentinel-node1.anudit.dev/fullchain.pem',
+      #             '/etc/letsencrypt/live/sentinel-node1.anudit.dev/privkey.pem'))
