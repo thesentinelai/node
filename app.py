@@ -4,7 +4,8 @@ import sys
 import shutil
 import logging
 from random import randrange
-from flask import Flask, jsonify
+from pprint import pprint
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
 import requests
 import ipfshttpclient
@@ -28,7 +29,6 @@ print(f"Connected to IPFS v{client.version()['Version']}")
 active_tasks = []
 global sentinel_contract
 
-port = int(getenv('PORT', str(5005)))
 
 def add_to_ipfs(fn="model.h5"):
 
@@ -38,11 +38,19 @@ def add_to_ipfs(fn="model.h5"):
   return res['Hash']
 
 
-def add_self_to_exchange():
+def connect_to_coor():
 
-  """ Add Server to Exchange """
+  """ Add Node to Coordinator """
 
-  params = {'eth_address': getenv('ETHADDRESS'), 'ip': getenv('NODE1_URL')}
+  get_ip = requests.get('https://api.ipify.org/?format=json')
+  node_ip = get_ip.json()['ip'];
+
+  params = {
+    'eth_address': getenv('ETHADDRESS'),
+    'ip': f"http://{node_ip}:5001"
+  }
+  print('Connecting to Coordinator')
+  pprint(params)
   posturl = f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}"
   try:
     resp = requests.post(posturl, json=params)
@@ -56,16 +64,12 @@ def add_self_to_exchange():
   else:
     print("Connected to Coordinator Node")
 
-
 @app.route('/')
-def server():
-
-  """ Online Test """
-
-  html = """<p style='font-family: monospace;padding: 10px;'>
-            Local Training Node is online 🚀 </p>"""
-
-  return html
+@app.route('/index.html')
+def index():
+  get_ip = requests.get('https://api.ipify.org/?format=json')
+  node_ip = get_ip.json()['ip'];
+  return render_template('index.html', ip=f"http://{node_ip}:5001")
 
 
 @app.route('/status')
@@ -91,6 +95,7 @@ def start_training(task_id):
   else:
     active_tasks.append(task_id)
     return jsonify("Task Added"), 200
+
 
 
 def background_trainer():
@@ -152,7 +157,7 @@ if not w3.isConnected():
 else:
   print(f'Connected to Web3 v{w3.api}')
 
-add_self_to_exchange()
+connect_to_coor()
 
 sentinel_contract = w3.eth.contract(address=contractAddress, abi=contractABI)
 
@@ -179,10 +184,11 @@ if __name__ != "__main__":
 if __name__ == '__main__':
 
   app.run(
-      host="0.0.0.0",
-      port=int(getenv('PORT', str(5005))),
-      debug=False,
-      use_reloader=False,
-      threaded=True)
-      #ssl_context=('/etc/letsencrypt/live/sentinel-node1.anudit.dev/fullchain.pem',
-      #             '/etc/letsencrypt/live/sentinel-node1.anudit.dev/privkey.pem'))
+    host="0.0.0.0",
+    port=int(getenv('PORT', str(5001))),
+    debug=False,
+    use_reloader=False,
+    threaded=True
+    #ssl_context=('/etc/letsencrypt/live/sentinel-node1.anudit.dev/fullchain.pem',
+    #             '/etc/letsencrypt/live/sentinel-node1.anudit.dev/privkey.pem'))
+  )
