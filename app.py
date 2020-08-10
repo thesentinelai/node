@@ -1,6 +1,7 @@
 """ Local Node Server """
 from os import getenv, path, makedirs
 import sys
+import ssl
 import shutil
 import logging
 from random import randrange
@@ -29,6 +30,13 @@ print(f"Connected to IPFS v{client.version()['Version']}")
 active_tasks = []
 global sentinel_contract
 
+# https://www.codegrepper.com/code-examples/python/unable+to+get+local+issuer+certificate+tensorflow
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 
 def add_to_ipfs(fn="model.h5"):
 
@@ -47,7 +55,7 @@ def connect_to_coor():
 
   params = {
     'eth_address': getenv('ETHADDRESS'),
-    'ip': f"http://{node_ip}:5001"
+    'ip': f"https://node1.sentinelai.hmny.io"
   }
   print('Connecting to Coordinator')
   pprint(params)
@@ -69,7 +77,7 @@ def connect_to_coor():
 def index():
   get_ip = requests.get('https://api.ipify.org/?format=json')
   node_ip = get_ip.json()['ip'];
-  return render_template('index.html', ip=f"http://{node_ip}:5001")
+  return render_template('index.html', ip=f"https://node1.sentinelai.hmny.io")
 
 
 @app.route('/status')
@@ -185,10 +193,8 @@ if __name__ == '__main__':
 
   app.run(
     host="0.0.0.0",
-    port=int(getenv('PORT', str(5001))),
+    port=int(getenv('PORT', str(3000))),
     debug=False,
     use_reloader=False,
     threaded=True
-    #ssl_context=('/etc/letsencrypt/live/sentinel-node1.anudit.dev/fullchain.pem',
-    #             '/etc/letsencrypt/live/sentinel-node1.anudit.dev/privkey.pem'))
   )

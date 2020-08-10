@@ -3,4 +3,5 @@
 /model_storage
 note.txt
 .env
+*.log
 
