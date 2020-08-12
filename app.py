@@ -55,7 +55,7 @@ def connect_to_coor():
 
   params = {
     'eth_address': getenv('ETHADDRESS'),
-    'ip': f"https://node1.sentinelai.hmny.io"
+    'ip': f"{getenv(NODE_URL)}"
   }
   print('Connecting to Coordinator')
   pprint(params)
@@ -77,7 +77,7 @@ def connect_to_coor():
 def index():
   get_ip = requests.get('https://api.ipify.org/?format=json')
   node_ip = get_ip.json()['ip'];
-  return render_template('index.html', ip=f"https://node1.sentinelai.hmny.io")
+  return render_template('index.html', ip=f"{getenv(NODE_URL)}")
 
 
 @app.route('/status')
