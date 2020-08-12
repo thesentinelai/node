@@ -24,7 +24,8 @@ CORS(app)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]iasdfjfsd/'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 
-ipfs_api = '/dns/ipfs.infura.io/tcp/5001/https'
+# ipfs_api = '/dns/ipfs.infura.io/tcp/5001/https'
+ipfs_api = '/ip4/127.0.0.1/tcp/5001/http'
 client = ipfshttpclient.connect(ipfs_api)
 print(f"Connected to IPFS v{client.version()['Version']}")
 
