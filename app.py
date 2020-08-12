@@ -6,7 +6,7 @@ import shutil
 import logging
 from random import randrange
 from pprint import pprint
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 import requests
 import ipfshttpclient
@@ -15,7 +15,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 import tensorflow as tf
 from contract import contractABI, contractAddress
-
+from keystore import setPublicKey, setHostName, getKeystoreData, checkKeystore
+from utils import trimAdd
 load_dotenv()
 
 app = Flask(__name__)
@@ -29,7 +30,6 @@ print(f"Connected to IPFS v{client.version()['Version']}")
 
 active_tasks = []
 global sentinel_contract
-
 # https://www.codegrepper.com/code-examples/python/unable+to+get+local+issuer+certificate+tensorflow
 try:
     _create_unverified_https_context = ssl._create_unverified_context
@@ -50,24 +50,28 @@ def connect_to_coor():
 
   """ Add Node to Coordinator """
 
+  if 'PUBLIC_KEY' not in getKeystoreData():
+    print('No Public Key Configured in .keystore. Exiting...')
+    sys.exit(0)
+
   get_ip = requests.get('https://api.ipify.org/?format=json')
   node_ip = get_ip.json()['ip'];
 
   params = {
-    'eth_address': getenv('ETHADDRESS'),
-    'ip': f"{getenv(NODE_URL)}"
+    'eth_address': getKeystoreData()['PUBLIC_KEY'],
+    'ip': getKeystoreData()['HOST_NAME']
   }
   print('Connecting to Coordinator')
   pprint(params)
-  posturl = f"{getenv('COORDINATOR_URL')}{getenv('NODES_ENDPOINT')}"
+  posturl = f"{getenv('COORDINATOR_URL')}/nodes"
   try:
     resp = requests.post(posturl, json=params)
   except:
-    print("Coordinator Node is Offline")
+    print("Coordinator Node is Offline. Exiting...")
     sys.exit(0)
 
   if resp.status_code != 200:
-    print("Coordinator Node is Offline")
+    print("Coordinator Node is Offline. Exiting...")
     sys.exit(0)
   else:
     print("Connected to Coordinator Node")
@@ -77,8 +81,10 @@ def connect_to_coor():
 def index():
   get_ip = requests.get('https://api.ipify.org/?format=json')
   node_ip = get_ip.json()['ip'];
-  return render_template('index.html', ip=f"{getenv(NODE_URL)}")
-
+  return render_template(
+          'index.html',
+          trimAdd = trimAdd,
+          keystore=getKeystoreData())
 
 @app.route('/status')
 def status():
@@ -92,11 +98,43 @@ def status():
   return jsonify(server_data), 200
 
 
+@app.route('/update/publickey', methods=['GET', 'POST'])
+def update_publickey():
+
+  """ Updates the Public key in the Keystore File """
+
+  publickey = request.args.get('publickey')
+  setPublicKey(publickey)
+  return jsonify({"success":True}), 200
+
+
+@app.route('/update/hostname', methods=['GET', 'POST'])
+def update_hostname():
+
+  """ Updates the Public key in the Keystore File """
+
+  hn = request.args.get('hostname')
+  setHostName(hn)
+  return jsonify({"success":True}), 200
+
+@app.route('/logs/app', methods=['GET'])
+def logs_app():
+
+  """ Updates the Public key in the Keystore File """
+
+  file_content = ''
+  f =  open("app.log")
+  file_content = f.read()
+
+  return file_content, 200
+
+
+
 @app.route('/start-training/', defaults={'task_id': 0}, methods=['GET', 'POST'])
 @app.route('/start-training/<int:task_id>', methods=['GET', 'POST'])
 def start_training(task_id):
 
-  """ Training Start """
+  """ Adds a valid task to the training Queue """
 
   if task_id < 1:
     return jsonify("Invalid Task"), 400
@@ -138,10 +176,10 @@ def background_trainer():
           print(f"TASKID:{val} Trained {new_hash}")
 
           params = {
-              'ethAddress': getenv('ETHADDRESS'),
+              'ethAddress': getKeystoreData()['PUBLIC_KEY'],
               'modelHash': new_hash
           }
-          url = f"{getenv('COORDINATOR_URL')}{getenv('NEXTRUN_ENDPOINT')}/{val}"
+          url = f"{getenv('COORDINATOR_URL')}/next-run/{val}"
           try:
             requests.post(url, json=params)
           except:
@@ -158,9 +196,13 @@ def background_trainer():
 
 # Start Initialization
 
-w3 = Web3(HTTPProvider('https://betav2.matic.network'))
+if (checkKeystore() == False):
+  print("Keystore has Missing Keys. Exiting...")
+  sys.exit(0)
+
+w3 = Web3(HTTPProvider('https://rpc-mumbai.matic.today'))
 if not w3.isConnected():
-  print("Web3 Not Connected")
+  print("Web3 Not Connected. Exiting...")
   sys.exit(0)
 else:
   print(f'Connected to Web3 v{w3.api}')
@@ -180,7 +222,6 @@ mnist = tf.keras.datasets.mnist
 xtrain = tf.keras.utils.normalize(xtrain, axis=1)
 xtest = tf.keras.utils.normalize(xtest, axis=1)
 print("Data Loaded")
-
 # End Initialization
 
 if __name__ != "__main__":
@@ -194,7 +235,7 @@ if __name__ == '__main__':
   app.run(
     host="0.0.0.0",
     port=int(getenv('PORT', str(3000))),
-    debug=False,
+    debug=True,
     use_reloader=False,
     threaded=True
   )
