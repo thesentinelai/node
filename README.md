@@ -1,11 +1,22 @@
 # node
 The Local Training Node for The Sentinel AI
 
-## 1. Installation
+## 1. Installation of Dependencies
 1. Python Dependencies ```pip3 install -r requirements.txt```
 2. Gunicorn ```pip3 install gunicorn```
 
 ## 2. Running the code
+Create a `.keystore` file with the following details. These can later be updated via the dashboard
+```
+PUBLIC_KEY=<Public Key of the Ethereum Account that receives the rewards>
+HOST_NAME=<Hostname of the Machine>
+```
+
+Create a `.env` file with the following details.
+```
+COORDINATOR_URL = <Hostname of the Coordinator>
+PORT = 80
+```
 
 ### 2.1 http
 

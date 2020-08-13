@@ -74,7 +74,7 @@
                                         </div>
                                 </div>
                                 <div class="row">
-                                    <input type="text" class="form-control form-control-lg text-white" aria-label="Text input with dropdown button" style="background-color: #2d2d2d;" placeholder="0x0" />
+                                    <input type="text" id ="newethadd" class="form-control form-control-lg text-white" aria-label="Text input with dropdown button" style="background-color: #2d2d2d;" placeholder="0x0" />
                                     <br />
                                     <p class="text-secondary">
                                         Current - {{trimAdd(keystore['PUBLIC_KEY'])}}
@@ -84,7 +84,7 @@
                             <div class="container">
                                 <br />
                                 <div class="row">
-                                    <button type="button" class="btn btn-primary btn-lg btn-block">Update Address</button>
+                                    <button type="button" onclick="updateEthAddress()" class="btn btn-primary btn-lg btn-block">Update Address</button>
                                 </div>
                             </div>
                             <br/><br/>
@@ -95,7 +95,7 @@
                                     </div>
                                 </div>
                                 <div class="row">
-                                    <input type="text" class="form-control form-control-lg text-white" aria-label="Text input with dropdown button" style="background-color: #2d2d2d;" placeholder="https://domain.io" />
+                                    <input type="text" id="newhostname" class="form-control form-control-lg text-white" aria-label="Text input with dropdown button" style="background-color: #2d2d2d;" placeholder="https://domain.io" />
                                     <br />
                                     <p class="text-secondary">
                                         Current - {{keystore['HOST_NAME']}}
@@ -105,14 +105,14 @@
                             <div class="container">
                                 <br />
                                 <div class="row">
-                                    <button type="button" class="btn btn-primary btn-lg btn-block">Update Hostname</button>
+                                    <button type="button" onclick="updateHostName()" class="btn btn-primary btn-lg btn-block">Update Hostname</button>
                                 </div>
                             </div>
                         </div>
                         <div class="tab-pane fade" id="pills-advanced" role="tabpanel" aria-labelledby="pills-advanced-tab">
                             <div class="container">
                                 <div class="row">
-                                    <button type="button" class="btn btn-primary btn-lg btn-block">View Node Logs</button>
+                                    <button type="button" class="btn btn-primary btn-lg btn-block" onclick='viewlogs()'>View Node Logs</button>
                                 </div>
                             </div>
                         </div>
@@ -120,7 +120,11 @@
                 </div>
             </div>
         </div>
-
+        <script>
+            var coordinatorAdd = "{{coordinator}}";
+            var systemHostName = "{{keystore['HOST_NAME']}}";
+            var systemEthereumAddress = "{{keystore['PUBLIC_KEY']}}";
+        </script>
         <!-- Optional JavaScript -->
         <!-- Popper.js first, then Bootstrap JS -->
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>

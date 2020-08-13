@@ -23,6 +23,7 @@ app = Flask(__name__)
 CORS(app)
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]iasdfjfsd/'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['SERVER_NAME'] = f"127.0.0.1:{getenv('PORT', str(4000))}"
 
 # ipfs_api = '/dns/ipfs.infura.io/tcp/5001/https'
 ipfs_api = '/ip4/127.0.0.1/tcp/5001/http'
@@ -55,16 +56,13 @@ def connect_to_coor():
     print('No Public Key Configured in .keystore. Exiting...')
     sys.exit(0)
 
-  get_ip = requests.get('https://api.ipify.org/?format=json')
-  node_ip = get_ip.json()['ip'];
-
   params = {
     'eth_address': getKeystoreData()['PUBLIC_KEY'],
     'ip': getKeystoreData()['HOST_NAME']
   }
   print('Connecting to Coordinator')
   pprint(params)
-  posturl = f"{getenv('COORDINATOR_URL')}/nodes"
+  posturl = f"{getenv('COORDINATOR_URL')}/nodes/add"
   try:
     resp = requests.post(posturl, json=params)
   except:
@@ -77,6 +75,40 @@ def connect_to_coor():
   else:
     print("Connected to Coordinator Node")
 
+def updateCoorEthAddress(_newPublicKey):
+
+  params = {
+    'old_eth_address': getKeystoreData()['PUBLIC_KEY'],
+    'new_eth_address': _newPublicKey
+  }
+  posturl = f"{getenv('COORDINATOR_URL')}/nodes/updateEthAddress"
+  try:
+    resp = requests.post(posturl, json=params)
+    return resp.json()
+  except:
+    resp  = {
+      'success':False,
+      'data': 'Coordinator Node is Offline'
+    }
+    return resp
+
+def updateCoorHostName(_newHostName):
+
+  params = {
+    'old_ip': getKeystoreData()['HOST_NAME'],
+    'new_ip': _newHostName
+  }
+  posturl = f"{getenv('COORDINATOR_URL')}/nodes/updateHostName"
+  try:
+    resp = requests.post(posturl, json=params)
+    return resp.json()
+  except:
+    resp  = {
+      'success':False,
+      'data': 'Coordinator Node is Offline'
+    }
+    return resp
+
 @app.route('/')
 @app.route('/index.html')
 def index():
@@ -84,6 +116,7 @@ def index():
   node_ip = get_ip.json()['ip'];
   return render_template(
           'index.html',
+          coordinator = getenv('COORDINATOR_URL'),
           trimAdd = trimAdd,
           keystore=getKeystoreData())
 
@@ -105,30 +138,31 @@ def update_publickey():
   """ Updates the Public key in the Keystore File """
 
   publickey = request.args.get('publickey')
+  r = updateCoorEthAddress(publickey)
   setPublicKey(publickey)
-  return jsonify({"success":True}), 200
+  return jsonify(r), 200
 
 
 @app.route('/update/hostname', methods=['GET', 'POST'])
 def update_hostname():
 
-  """ Updates the Public key in the Keystore File """
+  """ Updates the Hostname in the Keystore File """
 
   hn = request.args.get('hostname')
+  r = updateCoorHostName(hn)
   setHostName(hn)
-  return jsonify({"success":True}), 200
+  return jsonify(r), 200
 
 @app.route('/logs/app', methods=['GET'])
 def logs_app():
 
-  """ Updates the Public key in the Keystore File """
+  """ Make Application logs accesible """
 
   file_content = ''
   f =  open("app.log")
   file_content = f.read()
 
   return file_content, 200
-
 
 
 @app.route('/start-training/', defaults={'task_id': 0}, methods=['GET', 'POST'])
@@ -142,7 +176,6 @@ def start_training(task_id):
   else:
     active_tasks.append(task_id)
     return jsonify("Task Added"), 200
-
 
 
 def background_trainer():
@@ -233,9 +266,8 @@ if __name__ != "__main__":
 
 if __name__ == '__main__':
 
+  setHostName(app.config['SERVER_NAME'])
   app.run(
-    host="0.0.0.0",
-    port=int(getenv('PORT', str(3000))),
     debug=True,
     use_reloader=False,
     threaded=True
