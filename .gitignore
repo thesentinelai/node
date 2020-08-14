@@ -1,6 +1,8 @@
 /__pycache__
 /storage_dir
 /model_storage
-note.txt
+
 *.log
+.env
+.keystore
 
