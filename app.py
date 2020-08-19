@@ -266,7 +266,7 @@ if __name__ != "__main__":
 
 if __name__ == '__main__':
 
-  setHostName(app.config['SERVER_NAME'])
+  setHostName('http://' + app.config['SERVER_NAME'])
   app.run(
     debug=True,
     use_reloader=False,
